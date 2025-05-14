@@ -95,7 +95,6 @@ const RegisterPage: React.FC = () => {
         else if (responseData.statusCode === 409) {
           setErrors({
             email: [responseData.message || "Email is already registered"],
-            general: responseData.message || "Email is already registered",
           });
         }
         // Handle other errors
