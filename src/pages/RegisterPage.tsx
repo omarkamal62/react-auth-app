@@ -7,8 +7,10 @@ import {
   Button,
   Card,
   Alert,
+  InputGroup,
 } from "react-bootstrap";
 import { useNavigate, Link } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import axios from "axios";
 
 interface FormState {
@@ -19,12 +21,19 @@ interface FormState {
 }
 
 interface FormErrors {
-  email?: string;
-  name?: string;
-  password?: string;
-  confirmPassword?: string;
+  email?: string[];
+  name?: string[];
+  password?: string[];
+  confirmPassword?: string[];
   general?: string;
 }
+
+const api = axios.create({
+  baseURL: "",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,102 +46,74 @@ const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
-
-    // Name validation
-    if (!formData.name) {
-      newErrors.name = "Name is required";
-    } else if (formData.name.length < 3) {
-      newErrors.name = "Name must be at least 3 characters";
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else {
-      // Check minimum length
-      if (formData.password.length < 8) {
-        newErrors.password = "Password must be at least 8 characters";
-      }
-
-      // Check for at least one letter
-      if (!/[a-zA-Z]/.test(formData.password)) {
-        newErrors.password = "Password must contain at least one letter";
-      }
-
-      // Check for at least one number
-      if (!/\d/.test(formData.password)) {
-        newErrors.password = "Password must contain at least one number";
-      }
-
-      // Check for at least one special character
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        newErrors.password =
-          "Password must contain at least one special character";
-      }
-    }
-
-    // Confirm password validation
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+
+    // Clear field-specific errors when user starts typing again
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: undefined,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+    setSuccessMessage(null);
+    setIsSubmitting(true);
 
-    if (validateForm()) {
-      setIsSubmitting(true);
-      try {
-        // Send registration data to the backend
-        const response = await axios.post("/api/auth/register", {
-          email: formData.email,
-          name: formData.name,
-          password: formData.password,
-        });
+    try {
+      // Send registration data to the backend
+      await api.post("/api/users/register", {
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+      });
 
-        // Store token in localStorage (adjust based on your backend response)
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
-          navigate("/dashboard");
-        } else {
-          // Handle success without token
-          navigate("/login");
+      // Show success message
+      setSuccessMessage("Account created successfully!");
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (error: unknown) {
+      // Handle error responses from API
+
+      if (axios.isAxiosError(error) && error.response) {
+        const responseData = error.response.data;
+
+        // Handle validation errors
+        if (responseData.validationErrors) {
+          setErrors(responseData.validationErrors as FormErrors);
         }
-      } catch (error: unknown) {
-        // Handle error responses from API
-        if (axios.isAxiosError(error) && error.response) {
+        // Handle conflict errors (like email already registered)
+        else if (responseData.statusCode === 409) {
+          setErrors({
+            email: [responseData.message || "Email is already registered"],
+            general: responseData.message || "Email is already registered",
+          });
+        }
+        // Handle other errors
+        else {
           setErrors({
             general:
-              error.response.data?.message ||
+              responseData.message ||
+              responseData.error ||
               "Registration failed. Please try again.",
           });
-        } else {
-          setErrors({
-            general:
-              "Network error. Please check your connection and try again.",
-          });
         }
-      } finally {
-        setIsSubmitting(false);
+      } else {
+        setErrors({
+          general: "Network error. Please check your connection and try again.",
+        });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -145,13 +126,19 @@ const RegisterPage: React.FC = () => {
               <h2>Create an Account</h2>
             </Card.Header>
             <Card.Body className="p-4">
+              {successMessage && (
+                <Alert variant="success">{successMessage}</Alert>
+              )}
+
               {errors.general && (
                 <Alert variant="danger">{errors.general}</Alert>
               )}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Email address</Form.Label>
+                  <Form.Label className="fw-medium text-start w-100">
+                    Email address
+                  </Form.Label>
                   <Form.Control
                     type="email"
                     name="email"
@@ -161,13 +148,20 @@ const RegisterPage: React.FC = () => {
                     placeholder="Enter your email"
                     required
                   />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.email}
-                  </Form.Control.Feedback>
+                  {errors.email && (
+                    <Form.Control.Feedback
+                      type="invalid"
+                      className="w-100 text-start"
+                    >
+                      {errors.email[0]}
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Name</Form.Label>
+                  <Form.Label className="fw-medium text-start w-100">
+                    Name
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     name="name"
@@ -177,14 +171,21 @@ const RegisterPage: React.FC = () => {
                     placeholder="Enter your name"
                     required
                   />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.name}
-                  </Form.Control.Feedback>
+                  {errors.name && (
+                    <Form.Control.Feedback
+                      className="w-100 text-start"
+                      type="invalid"
+                    >
+                      {errors.name[0]}
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
-                  <div className="input-group">
+                  <Form.Label className="fw-medium text-start w-100">
+                    Password
+                  </Form.Label>
+                  <InputGroup>
                     <Form.Control
                       type={showPassword ? "text" : "password"}
                       name="password"
@@ -194,36 +195,25 @@ const RegisterPage: React.FC = () => {
                       placeholder="Enter your password"
                       required
                     />
-                    <Button
-                      variant="outline-secondary"
+                    <InputGroup.Text
                       onClick={() => setShowPassword(!showPassword)}
+                      style={{ cursor: "pointer" }}
                     >
-                      {showPassword ? "Hide" : "Show"}
-                    </Button>
-                    <Form.Control.Feedback type="invalid">
-                      {errors.password}
-                    </Form.Control.Feedback>
-                  </div>
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </InputGroup.Text>
+                    {errors.password && (
+                      <Form.Control.Feedback
+                        type="invalid"
+                        className="w-100 text-start"
+                      >
+                        {errors.password[0]}
+                      </Form.Control.Feedback>
+                    )}
+                  </InputGroup>
                   <Form.Text className="text-muted">
                     Must be at least 8 characters with a letter, number and
                     special character.
                   </Form.Text>
-                </Form.Group>
-
-                <Form.Group className="mb-4">
-                  <Form.Label>Confirm Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    isInvalid={!!errors.confirmPassword}
-                    placeholder="Confirm your password"
-                    required
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.confirmPassword}
-                  </Form.Control.Feedback>
                 </Form.Group>
 
                 <div className="d-grid gap-2">
