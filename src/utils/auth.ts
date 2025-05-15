@@ -37,11 +37,6 @@ export const isTokenExpired = (): boolean => {
   // Convert to number and multiply by 1000 to convert seconds to milliseconds
   const expiryTime = Number(expiry) * 1000;
   const currentTime = Date.now();
-
-  console.log("Current Time:", currentTime);
-  console.log("Expiry Time:", expiryTime);
-  console.log("Is Token Expired:", currentTime >= expiryTime);
-
   return currentTime >= expiryTime;
 };
 

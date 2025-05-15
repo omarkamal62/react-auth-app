@@ -26,7 +26,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const isTokenValid = checkTokenExpiration();
 
   if (!isAuthenticated || !isTokenValid) {
-    console.log("Auth requirements not met, redirecting to login");
+    // console.log("Auth requirements not met, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
