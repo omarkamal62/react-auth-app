@@ -12,6 +12,9 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
 
+import { useAuth } from "../contexts/AuthContext";
+import { getAuthToken } from "../utils/auth";
+
 interface UserData {
   _id: string;
   name: string;
@@ -27,11 +30,13 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { logout } = useAuth();
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         // Get the token from localStorage
-        const token = localStorage.getItem("token");
+        const token = getAuthToken();
 
         if (!token) {
           navigate("/login");
@@ -54,7 +59,7 @@ const Dashboard: React.FC = () => {
         if (axios.isAxiosError(error)) {
           // Handle Axios errors with type safety
           if (error.response?.status === 401) {
-            localStorage.removeItem("token");
+            logout();
             navigate("/login");
           }
         }
@@ -64,12 +69,10 @@ const Dashboard: React.FC = () => {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [navigate, logout]);
 
   const handleLogout = () => {
-    // Remove token from localStorage
-    localStorage.removeItem("token");
-    // Redirect to login page
+    logout();
     navigate("/login");
   };
 

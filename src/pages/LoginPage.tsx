@@ -13,6 +13,7 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api from "../api/axios";
+import { useAuth } from "../contexts/AuthContext";
 
 interface FormState {
   email: string;
@@ -34,6 +35,8 @@ const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const { login } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -61,7 +64,7 @@ const LoginPage: React.FC = () => {
 
       // Store token in localStorage
       if (response.data.accessToken) {
-        localStorage.setItem("token", response.data.accessToken);
+        login(response.data.accessToken);
         navigate("/dashboard");
       } else {
         setErrors({
