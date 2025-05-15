@@ -21,7 +21,7 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
-    console.log("Response:", response.status, response.data);
+    // console.log("Response:", response.status, response.data);
     return response;
   },
   (error) => {
