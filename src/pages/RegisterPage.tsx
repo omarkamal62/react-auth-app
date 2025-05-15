@@ -12,6 +12,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import axios from "axios";
+import api from "../api/axios";
 
 interface FormState {
   email: string;
@@ -27,13 +28,6 @@ interface FormErrors {
   confirmPassword?: string[];
   general?: string;
 }
-
-const api = axios.create({
-  baseURL: "",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
